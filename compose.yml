@@ -1,0 +1,101 @@
+#homelab-app stack compose.yml file, consist of app for homelab setup 
+version: "3.9"
+services:
+  nginxproxymanager:
+    image: jc21/nginx-proxy-manager:latest 
+    container_name: nginxproxymanager
+    ports:
+      - 80:80
+      - 81:81
+      - 443:443
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+    volumes:
+      - ./nginx-proxy/data:/data
+      - ./nginx-proxy/letsencrypt:/etc/letsencrypt 
+    healthcheck:
+      test: ["CMD", "/usr/bin/check-health"]
+      interval: 10s
+      timeout: 3s
+    restart: unless-stopped
+    networks:
+      homelab-app:
+        ipv4_adress: 172.21.0.2
+      
+  filebrowser:
+    image: filebrowser/filebrowser
+    container_name: filebrowser
+    volumes:
+      - ./storage/:/srv
+      - ./filebrowser/filebrowser.db:/database.db
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+    restart: unless-stopped
+    networks:
+      homelab-app:
+        ipv4_adress: 172.21.0.3
+
+  glance:
+    container_name: glance
+    image: glanceapp/glance
+    volumes:
+      - ./glance/config:/app/config
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+    restart: unless-stopped
+    networks:
+      homelab-app:
+        ipv4_adress: 172.21.0.4
+
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    volumes:
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
+      - ./jellyfin/media:/media
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+    restart: unless-stopped
+    networks:
+      homelab-app:
+        ipv4_adress: 172.21.0.5
+
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    environment:
+  # Set the appropriate timezone for your location (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones), e.g:
+      TZ: Asia/Jakarta
+  # Set a password to access the web interface. Not setting one will result in a random password being assigned
+      FTLCONF_webserver_api_password: password
+  # If using Docker's default `bridge` network setting the dns listening mode should be set to 'all'
+      FTLCONF_dns_listeningMode: all
+      PIHOLE_UID: "1000"
+      PIHOLE_GID: "1000"
+    volumes:
+  # For persisting Pi-hole's databases and common configuration file
+      - ./pihole/:/etc/pihole
+  # Uncomment the below if you have custom dnsmasq config files that you want to persist. Not needed for most starting fresh with Pi-hole v6. If you're upgrading from v5 you and have used this directory before, you should keep it enabled for the first v6 container start to allow for a complete migration. It can be removed afterwards. Needs environment variable FTLCONF_misc_etc_dnsmasq_d: 'true'
+      - ./pihole/dnsmasq.d:/etc/dnsmasq.d
+    cap_add:
+  # See https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+  # Required if you are using Pi-hole as your DHCP server, else not needed
+      #- NET_ADMIN
+  # Required if you are using Pi-hole as your NTP client to be able to set the host's system time
+      #- SYS_TIME
+  # Optional, if Pi-hole should get some more processing time
+      - SYS_NICE
+    restart: unless-stopped
+    networks:
+      homelab-app:
+        ipv4_adress: 172.21.0.6
+
+networks:
+  homelab-app:
+    external: true
+    name: homelab-app

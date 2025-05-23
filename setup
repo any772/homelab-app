@@ -1,0 +1,17 @@
+#! /bin/bash
+
+#Setup file to install homelab-app from 0
+
+docker network create --driver=bridge --subnet=172.21.0.0/16 --gateway=172.21.0.1 homelab-app
+
+mkdir -p ./glance/config ./nginx-proxy/data ./nginx-proxy/letsencrypt ./pihole ./filebrowser ./storage ./jellyfin/config ./jellyfin/cache ./jellyfin/media
+
+touch ./filebrowser/filebrowser.db ./pihole/dnsmasq.d 
+
+wget -O ./glance/config/glance.yml https://raw.githubusercontent.com/glanceapp/glance/refs/heads/main/docs/glance.yml
+
+#Not from portainer
+docker-compose up -d
+
+#If from portainer
+#docker network connect homelab-app portainer
